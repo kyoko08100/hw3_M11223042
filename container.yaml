@@ -1,0 +1,17 @@
+# YOLOv5 🚀 by Ultralytics, GPL-3.0 license
+# Example usage: python train.py --data container.yaml
+# parent
+# ├── yolov5
+# └── datasets
+#     └── container_dataset
+
+
+path: datasets/container_dataset  # dataset root dir
+train: images/train  # train images (relative to 'path') 128 images
+val: images/train  # val images (relative to 'path') 128 images
+test: images/test # test images (optional)
+
+# Classes
+names:
+  0: container #貨櫃
+ 
