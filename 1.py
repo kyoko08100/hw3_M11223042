@@ -12,44 +12,23 @@ import matplotlib.pyplot as plt
 import pytesseract
 import cv2
 import re
-# 改一下AAAAAAA
-pytesseract.pytesseract.tesseract_cmd=r'C:\Program Files\Tesseract-OCR\tesseract.exe'
 
-# model 
+# Settings 改這些東西就行
+pytesseract.pytesseract.tesseract_cmd=r'C:\Program Files\Tesseract-OCR\tesseract.exe'  # pytesseract安裝位置，基本上不用換
+path = f"圖片準確率測試集"  # 放測試集的資料夾
+pt_path = 'best_weight/best_ex'  # 放參數檔的路徑 檔名都取best_ex4.pt、best_ex5.pt、best_ex6.pt ...
+start_pt = 4  # 起始best_ex
+end_pt = 4  # 結束best_ex
 
-model = torch.hub.load('yolov5', 'custom', path='/best/best.pt')
-
-
-# main 
-
-def ocr(imageP, gt):
-
-    results = model(imageP)
-
+def ocr(image, gt):
+    results = model(image)
     # label coord from model
     labels, coordinates = results.xyxyn[0][:, -1], results.xyxyn[0][:, :-1]
-
-    image = cv2.imread(imageP)
-    # 轉灰   RGB? BGR? to GRAY
-    image = cv2.cvtColor(image, cv2.COLOR_RGB2GRAY)
-    # 用於存放增強對比
-    # 參 OpenCV
-    alpha = 1
-    beta = 5 
-    image = cv2.convertScaleAbs(image, alpha, beta)
-    # 對比與亮度 OpenCV
-    contrast = -30
-    brightness = 0
-    image = image * (contrast/127 + 1) - contrast + brightness # 轉換公式
-    # 轉換公式參考 https://stackoverflow.com/questions/50474302/how-do-i-adjust-brightness-contrast-and-vibrance-with-opencv-python
-    # 調整後的數值大多為浮點數，且可能會小於 0 或大於 255
-    # 為了保持像素色彩區間為 0～255 的整數，所以再使用 np.clip() 和 np.uint8() 進行轉換
-    image = np.clip(image, 0, 255)
-    image = np.uint8(image)
+    image = cv2.imread(image)
     width, height = image.shape[1], image.shape[0]
-    print(f'Photo width,height: {width},{height}. Detected container: {len(labels)}')
+    # print(f'Photo width,height: {width},{height}. Detected container: {len(labels)}')
 
-    plot = plt.subplots(1, 2)
+    aaa, plot = plt.subplots(1, 2)
 
     for i in range(len(labels)):
         row = coordinates[i]
@@ -64,47 +43,49 @@ def ocr(imageP, gt):
             if text:
                 cv2.rectangle(image, (xmin,ymin), (xmax, ymax), (0, 255, 0), 6) # boundingbox
                 cv2.putText(image, f"{text}", (xmin,ymin), cv2.FONT_HERSHEY_SIMPLEX, 2, (255, 255, 255), 3)
-                # BGR RGB GRAY?
-                plot[0].imshow(cv2.cvtColor(image, cv2.COLOR_GRAY2RGB))
+                plot[0].imshow(image)
 
                 # 擷取文字 把0~9、大寫字母、空格-
                 text = re.sub(r'[^0-9A-Z]', '', text)
                 text = text.replace(" ", "")
                 text = text[:11]
-                # BGR RGB GRAY?
-                plot[1].imshow(cv2.cvtColor(bbox, cv2.COLOR_GRAY2RGB))
-
-                print(f'YOLOv5:{row[4]:.2f}, pytesseract:{text}, gt:{gt}')
+                plot[1].imshow(bbox)
+                print(f'Confidence:{row[4]:.2f}, pytesseract text:{text}, raw text:{gt}')
                 if text == gt:
                     return 1 
                 else:
                     return 0
             else:
-                print("00000")
+                print("None pytesseract text")
                 return 0
 
 
 # 準確率績效公式 辨識正確/測試資料
-
 def accuracy(fail, true):
     return true / (fail+true)
 
-# run
- 
-path = f"./test"
-file_list = glob.glob(os.path.join(path, "*.jpg"))
 
-fail = 0
-true = 0
+result_list = []
+for i in range(start_pt, end_pt + 1):
+    # model 
+    model = torch.hub.load('ultralytics/yolov5', 'custom', path=f'{pt_path}{i}.pt')
+    file_list = glob.glob(os.path.join(path, "*.jpg"))
 
-for file in file_list:
-    file_name = os.path.splitext(os.path.basename(file))[0]
-    result = ocr(file,file_name)
-    if result == 0:
-        fail+=1
-    if result == 1:
-        true+=1
+    fail = 0
+    true = 0
 
-print(true)
-acc = accuracy(fail, true)
-print("準確度:", acc)
+    for file in file_list:
+        file_name = os.path.splitext(os.path.basename(file))[0]
+        result = ocr(file, file_name)
+        if result == 0:
+            fail+=1
+        if result == 1:
+            true+=1
+    acc = accuracy(fail, true)
+    result_list.append((f'ex{i}', f'正確辨識:{true}張', f'準確度:{acc}'))
+
+# 輸出結果
+for l in result_list:
+    for t in l:
+        print(t, end=' ')
+    print()
