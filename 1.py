@@ -22,13 +22,30 @@ model = torch.hub.load('yolov5', 'custom', path='/best/best.pt')
 
 # main 
 
-def ocr(image, gt):
+def ocr(imageP, gt):
 
-    results = model(image)
+    results = model(imageP)
 
     # label coord from model
     labels, coordinates = results.xyxyn[0][:, -1], results.xyxyn[0][:, :-1]
 
+    image = cv2.imread(imageP)
+    # 轉灰   RGB? BGR? to GRAY
+    image = cv2.cvtColor(image, cv2.COLOR_RGB2GRAY)
+    # 用於存放增強對比
+    # 參 OpenCV
+    alpha = 1
+    beta = 5 
+    image = cv2.convertScaleAbs(image, alpha, beta)
+    # 對比與亮度 OpenCV
+    contrast = -30
+    brightness = 0
+    image = image * (contrast/127 + 1) - contrast + brightness # 轉換公式
+    # 轉換公式參考 https://stackoverflow.com/questions/50474302/how-do-i-adjust-brightness-contrast-and-vibrance-with-opencv-python
+    # 調整後的數值大多為浮點數，且可能會小於 0 或大於 255
+    # 為了保持像素色彩區間為 0～255 的整數，所以再使用 np.clip() 和 np.uint8() 進行轉換
+    image = np.clip(image, 0, 255)
+    image = np.uint8(image)
     width, height = image.shape[1], image.shape[0]
     print(f'Photo width,height: {width},{height}. Detected container: {len(labels)}')
 
@@ -47,13 +64,15 @@ def ocr(image, gt):
             if text:
                 cv2.rectangle(image, (xmin,ymin), (xmax, ymax), (0, 255, 0), 6) # boundingbox
                 cv2.putText(image, f"{text}", (xmin,ymin), cv2.FONT_HERSHEY_SIMPLEX, 2, (255, 255, 255), 3)
-                plot[0].imshow(image)
+                # BGR RGB GRAY?
+                plot[0].imshow(cv2.cvtColor(image, cv2.COLOR_GRAY2RGB))
 
                 # 擷取文字 把0~9、大寫字母、空格-
                 text = re.sub(r'[^0-9A-Z]', '', text)
                 text = text.replace(" ", "")
                 text = text[:11]
-                plot[1].imshow(bbox)
+                # BGR RGB GRAY?
+                plot[1].imshow(cv2.cvtColor(bbox, cv2.COLOR_GRAY2RGB))
 
                 print(f'YOLOv5:{row[4]:.2f}, pytesseract:{text}, gt:{gt}')
                 if text == gt:
@@ -70,6 +89,8 @@ def ocr(image, gt):
 def accuracy(fail, true):
     return true / (fail+true)
 
+# run
+ 
 path = f"./test"
 file_list = glob.glob(os.path.join(path, "*.jpg"))
 
