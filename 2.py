@@ -10,8 +10,10 @@ import re
 
 # Settings 改這些東西就行
 pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'  # pytesseract安裝位置，基本上不用換
-model = torch.hub.load('ultralytics/yolov5', 'custom', path='best_weight/best_ex7.pt')  # 注意參數檔的路徑
 path = "影片資料集"  # 放影片的資料夾路徑
+pt_path = 'best_weight/best_ex'  # 放參數檔的路徑 檔名都取best_ex4.pt、best_ex5.pt、best_ex6.pt ...
+start_pt = 4  # 起始best_ex
+end_pt = 9  # 結束best_ex
 
 
 # 存放辨識的dict 用於投票多數決
@@ -147,23 +149,29 @@ def video(video_path, model):
 start_time = time.time()
 
 avi_files = glob.glob(path + "/*.avi")
-answer = 0
-fail = 0
-for avi_file in avi_files:
-    # 在這裡處理每個 .avi 檔案
-    text = video(avi_file, model)
-    file_name = os.path.basename(avi_file)
-    file_name_without_extension = os.path.splitext(file_name)[0]
-    print(text + "正解 "+ file_name_without_extension)
-    if text == file_name_without_extension:
-        answer +=1
-    else:
-        fail +=1
-    print("anwser" + str(answer))
-    print("fail" + str(fail))
-    print("準確率:" + str(answer/(answer+fail)))
+result_list = []
+for i in range(start_pt, end_pt + 1):
+    model = torch.hub.load('ultralytics/yolov5', 'custom', path=f'{pt_path}{i}.pt')  # 注意參數檔的路徑
+    answer = 0
+    fail = 0
+    for avi_file in avi_files:
+        # 在這裡處理每個 .avi 檔案
+        text = video(avi_file, model)
+        file_name = os.path.basename(avi_file)
+        file_name_without_extension = os.path.splitext(file_name)[0]
+        print(text + "正解 "+ file_name_without_extension)
+        if text == file_name_without_extension:
+            answer +=1
+        else:
+            fail +=1
+    result_list.append((f'ex{i}', f'辨識正確:{answer}個影片', f'辨識失敗:{fail}個影片', f'準確率:{answer/(answer+fail)}'))
 # 記錄結束時間
 end_time = time.time()
 # 計算執行時間
 execution_time = end_time - start_time
 print(f"程式執行時間為 {execution_time} 秒")
+# 輸出結果
+for l in result_list:
+    for t in l:
+        print(t, end=' ')
+    print()
