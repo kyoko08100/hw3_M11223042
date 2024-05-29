@@ -8,6 +8,12 @@ from collections import Counter
 import glob
 import re
 
+# Settings 改這些東西就行
+pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'  # pytesseract安裝位置，基本上不用換
+model = torch.hub.load('ultralytics/yolov5', 'custom', path='best_weight/best_ex7.pt')  # 注意參數檔的路徑
+path = "影片資料集"  # 放影片的資料夾路徑
+
+
 # 存放辨識的dict 用於投票多數決
 def ocr_map(ocr_result, ocr_total_map):
     if ocr_result in ocr_total_map:
@@ -140,10 +146,6 @@ def video(video_path, model):
 
 start_time = time.time()
 
-model = torch.hub.load('ultralytics/yolov5', 'custom', path='best_weight/best_ex7.pt')
-pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
-
-path = "影片資料集"
 avi_files = glob.glob(path + "/*.avi")
 answer = 0
 fail = 0
